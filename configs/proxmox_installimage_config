@@ -1,0 +1,13 @@
+DRIVE1 /dev/nvme0n1
+DRIVE2 /dev/nvme1n1
+SWRAID 1
+SWRAIDLEVEL 1
+BOOTLOADER grub
+HOSTNAME pve2.homelabing.cloud
+PART /boot ext3 512M
+PART lvm vg0 all
+LV vg0 swap swap swap 2G
+LV vg0 root / ext4 all
+
+# List images with ls /root/.oldroot/nfs/install/../images
+IMAGE /root/images/Debian-bookworm-latest-amd64-base.tar.gz

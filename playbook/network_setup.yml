@@ -1,0 +1,36 @@
+- hosts: hetzner_servers
+  gather_facts: yes
+  become: yes
+  vars:
+    proxmox_interface: enp0s31f6
+    public_ip: 88.99.212.51
+    public_netmask: 255.255.255.192 # Assuming /26 CIDR notation
+    public_gateway: 88.99.212.1
+    ipv6_address: "2a01:4f8:10a:3d07::2"
+    ipv6_prefix: 64
+    ipv6_gateway: "fe80::1"
+    vmbr1_address: "10.0.0.1"
+    vmbr1_netmask: "255.255.255.252" # Assuming /30 CIDR notation
+    vmbr2_address: "192.168.10.1"
+    vmbr2_netmask: "255.255.255.0" # Assuming /24 CIDR notation
+
+
+  tasks:
+    - name: Backup current network interfaces configuration
+      ansible.builtin.copy:
+        src: /etc/network/interfaces
+        dest: /etc/network/interfaces.bak
+        remote_src: yes
+
+    - name: Configure network interfaces
+      ansible.builtin.template:
+        src: templates/interfaces.j2
+        dest: /etc/network/interfaces
+      notify: restart network services
+
+  handlers:
+    - name: restart network services
+      ansible.builtin.shell: |
+        systemctl restart networking
+        ifup --force vmbr0 vmbr1 vmbr2
+      listen: "restart network services"

@@ -1,0 +1,52 @@
+---
+- hosts: hetzner_servers
+  gather_facts: no
+  become: yes
+  vars:
+    PUBIP: 88.99.212.51
+    SSHPORT: 22
+
+  tasks:
+
+    - name: Create pfSense routing script
+      copy:
+        dest: /root/pfsense-route.sh
+        content: |
+          #!/bin/sh
+
+          ## enable IP forwarding
+          echo 1 > /proc/sys/net/ipv4/ip_forward
+
+          ## Redirect intended packets to LAN for the WAN pfSense interface
+          ip route change 192.168.10.0/24 via 10.0.0.2 dev vmbr1
+        mode: '0755'
+
+    - name: Create IPTABLES configuration script
+      ansible.builtin.template:
+        src: templates/iptables.sh.j2
+        dest: /root/iptables.sh
+        mode: '0755'
+
+    - name: Backup critical network configuration files
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ item }}.bak"
+        remote_src: yes
+      loop:
+        - /etc/network/interfaces
+        - /root/pfsense-route.sh
+        - /root/iptables.sh
+      when: ansible_check_mode is not defined or not ansible_check_mode
+
+    - name: Execute pfSense routing configuration script
+      ansible.builtin.command:
+        cmd: /root/pfsense-route.sh
+      ignore_errors: yes
+      # You may remove 'ignore_errors: yes' if you are confident in the script's reliability,
+      # or you wish to halt execution on failure.
+
+    - name: Execute IPTABLES configuration script
+      ansible.builtin.command:
+        cmd: /root/iptables.sh
+      ignore_errors: yes
+      # Similar to the previous task, consider the implications of 'ignore_errors'.
