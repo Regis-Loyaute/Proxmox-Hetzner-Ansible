@@ -109,10 +109,13 @@
         executable: /bin/bash
 
     - name: Reboot the server to complete Proxmox VE installation
-      ansible.builtin.reboot:
-        msg: "Rebooting to complete Proxmox VE installation"
-        connect_timeout: 5
-        reboot_timeout: 600
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
-        test_command: uptime
+      ansible.builtin.command:
+        cmd: reboot
+      async: 1
+      poll: 0
+      ignore_errors: yes
+
+    - name: Remove servers from known_hosts on the Ansible host
+      ansible.builtin.shell:
+        cmd: ssh-keygen -f "/root/.ssh/known_hosts" -R "{{ inventory_hostname }}"
+      delegate_to: localhost
