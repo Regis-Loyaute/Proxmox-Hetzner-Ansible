@@ -9,9 +9,9 @@
     vm_id: 100
     vm_name: "pfsense"
     storage_location: "local"  # Ensure this matches your Proxmox storage configuration
-    vm_cpu: 1
-    vm_ram: 1024  # in MB
-    vm_disk_size: "8"  # Specify disk size with 'G' for GB
+    vm_cpu: 2
+    vm_ram: 2048  # in MB
+    vm_disk_size: "16"  # In GB
     network_bridges: ["vmbr1", "vmbr2"]
     iso_storage: "local"  # Adjust based on where your ISOs are stored
 

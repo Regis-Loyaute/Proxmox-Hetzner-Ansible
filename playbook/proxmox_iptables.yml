@@ -3,7 +3,7 @@
   gather_facts: no
   become: yes
   vars:
-    PUBIP: 88.99.212.51
+    PUBIP: 65.109.39.27
     SSHPORT: 22
 
   tasks:

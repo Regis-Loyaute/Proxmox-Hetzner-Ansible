@@ -2,12 +2,14 @@
   gather_facts: no
   vars:
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
   become: yes
 
   tasks:
     - name: Copy the installimage configuration file to the server
       ansible.builtin.copy:
-        src: /home/rloyaute/configs/proxmox_installimage_config
+      #change source to wget from Github repo
+        src: /home/rloyaute/Proxmox-Hetzner-Ansible/configs/proxmox_installimage_config
         dest: /root/proxmox_installimage_config
 
     - name: Execute installimage with the configuration file and check for success
@@ -27,95 +29,16 @@
         msg: "The installimage script failed. Please check the output for details."
       when: installimage_result.rc != 0
 
-    - name: Reboot the server
-      ansible.builtin.reboot:
-      when: installimage_result.rc == 0
-
-    - name: Wait for server to become reachable again after reboot
-      ansible.builtin.wait_for_connection:
-        delay: 30
-        timeout: 600
-      when: installimage_result.rc == 0
-
-  tasks:
-    - name: Gather network facts
-      ansible.builtin.setup:
-        filter: "ansible_*_ipv4"
-
-    - name: Get IP routes
-      ansible.builtin.command: ip route
-      register: ip_routes
-
-    - name: Display network information
-      ansible.builtin.debug:
-        msg: |
-          Interface: "{{ item.key }}"
-          IPv4 Address: "{{ item.value.address }}"
-          IPv4 Broadcast: "{{ item.value.broadcast }}"
-          IPv4 Netmask: "{{ item.value.netmask }}"
-          IPv4 Network: "{{ item.value.network }}"
-      loop: "{{ ansible_facts | dict2items }}"
-      when: item.key is match("^ansible_.*_ipv4$") and item.value is not none
-
-    - name: Display IP routes
-      ansible.builtin.debug:
-        var: ip_routes.stdout_lines
-
-    - name: Update and upgrade all packages to the latest version
-      ansible.builtin.apt:
-        update_cache: yes
-        upgrade: full
-        force_apt_get: yes
-
-    - name: Install necessary packages for Proxmox installation
-      ansible.builtin.apt:
-        name:
-          - curl
-          - gnupg2
-        state: present
-
-    - name: Add Proxmox VE repository for Debian Bookworm
-      ansible.builtin.shell: |
-        echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
-        curl http://download.proxmox.com/debian/proxmox-release-bookworm.gpg | gpg --dearmor > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
-      args:
-        executable: /bin/bash
-
-    - name: Update APT cache after adding Proxmox VE repository
-      ansible.builtin.apt:
-        update_cache: yes
-
-    - name: Install Proxmox VE
-      ansible.builtin.apt:
-        name:
-          - proxmox-ve
-          - postfix
-          - open-iscsi
-        state: present
-
-    - name: Remove the default Debian kernel
-      ansible.builtin.apt:
-        name:
-          - linux-image-amd64
-          - linux-image-$(uname -r)
-        state: absent
-      ignore_errors: yes
-
-    - name: Update GRUB and remove os-prober
-      ansible.builtin.shell: |
-        update-grub
-        apt remove os-prober -y
-      args:
-        executable: /bin/bash
-
-    - name: Reboot the server to complete Proxmox VE installation
-      ansible.builtin.command:
-        cmd: reboot
-      async: 1
-      poll: 0
-      ignore_errors: yes
-
     - name: Remove servers from known_hosts on the Ansible host
       ansible.builtin.shell:
         cmd: ssh-keygen -f "/root/.ssh/known_hosts" -R "{{ inventory_hostname }}"
       delegate_to: localhost
+
+    - name: Reboot the server after installimage
+      ansible.builtin.reboot:
+        reboot_timeout: 600 # Wait up to 10 minutes for reboot to complete
+        msg: "Rebooting after successful installimage execution"
+        pre_reboot_delay: 0 # No delay before reboot
+        post_reboot_delay: 30 # Wait 30 seconds after reboot before continuing with tasks
+        test_command: "uptime" # Command to run for checking if the server is back up
+      when: installimage_result.rc == 0 # Only reboot if installimage was successful
