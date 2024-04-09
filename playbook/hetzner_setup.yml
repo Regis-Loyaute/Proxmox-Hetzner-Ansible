@@ -8,7 +8,6 @@
   tasks:
     - name: Copy the installimage configuration file to the server
       ansible.builtin.copy:
-      #change source to wget from Github repo
         src: /home/rloyaute/Proxmox-Hetzner-Ansible/configs/proxmox_installimage_config
         dest: /root/proxmox_installimage_config
 

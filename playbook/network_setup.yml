@@ -1,19 +1,7 @@
+---
 - hosts: hetzner_servers
   gather_facts: yes
   become: yes
-  vars:
-    proxmox_interface: enp41s0
-    public_ip: 65.109.39.27
-    public_netmask: 255.255.255.192 # Assuming /26 CIDR notation
-    public_gateway: 65.109.39.1
-    ipv6_address: "2a01:4f9:5a:24a5::"
-    ipv6_prefix: 64
-    ipv6_gateway: "fe80::1"
-    vmbr1_address: "10.0.0.1"
-    vmbr1_netmask: "255.255.255.252" # Assuming /30 CIDR notation
-    vmbr2_address: "192.168.10.1"
-    vmbr2_netmask: "255.255.255.0" # Assuming /24 CIDR notation
-
 
   tasks:
     - name: Backup current network interfaces configuration
@@ -27,6 +15,34 @@
         src: templates/interfaces.j2
         dest: /etc/network/interfaces
       notify: restart network services
+
+    - name: Ensure pfSense ISO directory exists
+      ansible.builtin.file:
+        path: "{{ iso_directory }}"
+        state: directory
+
+    - name: Check if pfSense ISO is already unzipped
+      ansible.builtin.stat:
+        path: "{{ iso_directory }}/{{ pfsense_iso }}"
+      register: pfsense_iso_stat
+
+    - name: Download pfSense ISO if not exists
+      ansible.builtin.get_url:
+        url: "{{ pfsense_iso_url }}"
+        dest: "{{ iso_directory }}/{{ pfsense_iso }}.gz"
+        mode: '0644'
+      register: download_result
+      until: download_result is succeeded
+      retries: 3
+      delay: 5
+      when: not pfsense_iso_stat.stat.exists
+
+    - name: Unzip pfSense ISO if not already done
+      ansible.builtin.shell:
+        cmd: gunzip -k "{{ iso_directory }}/{{ pfsense_iso }}.gz"
+      args:
+        creates: "{{ iso_directory }}/{{ pfsense_iso }}"
+      when: download_result is changed or not pfsense_iso_stat.stat.exists
 
   handlers:
     - name: restart network services

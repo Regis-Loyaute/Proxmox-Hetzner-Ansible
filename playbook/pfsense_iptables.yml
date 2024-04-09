@@ -1,12 +1,33 @@
 ---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Initialize Packer project
+      ansible.builtin.command:
+        cmd: "packer init /home/rloyaute/pfsense-packer-proxmox/pfSense.pkr.hcl"
+      ignore_errors: yes
+      # Consider handling errors more appropriately.
+
+    - name: Build pfSense image with Packer
+      ansible.builtin.command:
+        cmd: "packer build -var-file=variables.pkr.hcl -var-file=credentials.pkr.hcl pfSense.pkr.hcl"
+        chdir: "/home/rloyaute/Proxmox-Hetzner-Ansible/pf-packer"
+      ignore_errors: yes
+
 - hosts: hetzner_servers
   gather_facts: no
   become: yes
-  vars:
-    PUBIP: 65.109.39.27
-    SSHPORT: 22
-
   tasks:
+
+    - name: Clone VM template to new VM named pfSense
+      ansible.builtin.command:
+        cmd: "qm clone 900 100 --name pfSense --full true"
+      ignore_errors: yes
+
+    - name: Start the new pfSense VM
+      ansible.builtin.command:
+        cmd: "qm start 100"
+      ignore_errors: yes
 
     - name: Create pfSense routing script
       copy:
@@ -42,11 +63,8 @@
       ansible.builtin.command:
         cmd: /root/pfsense-route.sh
       ignore_errors: yes
-      # You may remove 'ignore_errors: yes' if you are confident in the script's reliability,
-      # or you wish to halt execution on failure.
 
     - name: Execute IPTABLES configuration script
       ansible.builtin.command:
         cmd: /root/iptables.sh
       ignore_errors: yes
-      # Similar to the previous task, consider the implications of 'ignore_errors'.
