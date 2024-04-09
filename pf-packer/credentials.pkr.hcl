@@ -1,3 +1,3 @@
-proxmox_hostname = "https://65.109.39.27:8006"
+proxmox_hostname = "https://88.99.240.99:8006"
 proxmox_user     = "root@pve"
-proxmox_password = "U845RDvVStWjEu"
+proxmox_password = "deNBxq22FubLq4"

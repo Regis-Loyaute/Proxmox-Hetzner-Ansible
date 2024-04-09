@@ -1,18 +1,51 @@
 - hosts: hetzner_servers
-  gather_facts: no
+  gather_facts: yes
   vars:
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
-    ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+    ansible_ssh_extra_args: -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
+    # Proxmox VE specific configurations
+    bootloader: grub
+    reboot_postinstall: true
+    sshkey_url: false
+    hostname: Proxmox-VE.localdomain
+    # RAID configuration
+    swraid: 1
+    swraid_level: 1
+    # Physical partitions
+    partitions:
+      - mountpoint: /boot
+        filesystem: ext3
+        size: 1024M
+      - mountpoint: lvm
+        filesystem: vg0
+        size: all
+    # Logical volumes
+    logical_volumes:
+      - vg: vg0
+        name: swap
+        mountpoint: swap
+        filesystem: swap
+        size: 6G
+      - vg: vg0
+        name: root
+        mountpoint: /
+        filesystem: ext4
+        size: all
+    # Installation image
+    image: /root/images/Debian-bookworm-latest-amd64-base.tar.gz  # Defining the variable here
   become: yes
 
   tasks:
-    - name: Copy the installimage configuration file to the server
-      ansible.builtin.copy:
-        src: /home/rloyaute/Proxmox-Hetzner-Ansible/configs/proxmox_installimage_config
+
+    - name: Generate the installimage configuration file on the server
+      ansible.builtin.template:
+        src: ./templates/installimage.j2  # Adjust the path to your Jinja2 template file
         dest: /root/proxmox_installimage_config
 
     - name: Execute installimage with the configuration file and check for success
-      ansible.builtin.shell: /root/.oldroot/nfs/install/installimage -a -c /root/proxmox_installimage_config
+      ansible.builtin.shell:
+        cmd: /root/.oldroot/nfs/install/installimage -a -c /root/proxmox_installimage_config
+        executable: /bin/bash
+        chdir: /root/
       register: installimage_result
       ignore_errors: yes
 
@@ -21,17 +54,12 @@
         msg: |
           Installimage stdout: {{ installimage_result.stdout }}
           Installimage stderr: {{ installimage_result.stderr }}
-      when: installimage_result.rc != 0
+      when: installimage_result.rc != 0 or ("INSTALLATION COMPLETE" not in installimage_result.stdout)
 
     - name: Fail the playbook if installimage did not complete successfully
       ansible.builtin.fail:
         msg: "The installimage script failed. Please check the output for details."
-      when: installimage_result.rc != 0
-
-    - name: Remove servers from known_hosts on the Ansible host
-      ansible.builtin.shell:
-        cmd: ssh-keygen -f "/root/.ssh/known_hosts" -R "{{ inventory_hostname }}"
-      delegate_to: localhost
+      when: installimage_result.rc != 0 or ("INSTALLATION COMPLETE" not in installimage_result.stdout)
 
     - name: Reboot the server after installimage
       ansible.builtin.reboot:
