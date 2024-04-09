@@ -11,34 +11,33 @@
   # Proxmox variables
   #############################################################
   variable "proxmox_hostname" {
-    description = "Proxmox host address (e.g. https://65.109.39.27:8006)"
-    type = string
-    sensitive = true
+    description = "Proxmox host address (e.g. https://192.168.1.1:8006)"
+    type        = string
+    sensitive   = true
   }
 
-  variable "proxmox_token_user" {
-    description = "Proxmox token user (e.g. root@pam!root)"
-    type = string
-    sensitive = true
+  variable "proxmox_user" {
+    description = "Proxmox username (e.g. root@pam)"
+    type        = string
+    sensitive   = true
   }
 
-  variable "proxmox_token" {
-    description = "Proxmox token for the provided proxmox_token_user"
-    type = string
-    sensitive = true
+  variable "proxmox_password" {
+    description = "Proxmox password for the provided proxmox_user"
+    type        = string
+    sensitive   = true
   }
 
   variable "proxmox_node_name" {
     description = "Proxmox node"
-    type = string
+    type        = string
   }
 
   variable "proxmox_insecure_skip_tls_verify" {
     description = "Skip TLS verification?"
-    type = bool
-    default = true
+    type        = bool
+    default     = true
   }
-
   #############################################################
   # Template variables
   #############################################################
@@ -141,11 +140,11 @@
   }
 
   source "proxmox-iso" "pfsense_template" {
-    proxmox_url               = "${var.proxmox_hostname}/api2/json"
-    insecure_skip_tls_verify 	= var.proxmox_insecure_skip_tls_verify
-    username                  = var.proxmox_token_user
-    token                     = var.proxmox_token
-    node                      = var.proxmox_node_name
+    proxmox_url              = "${var.proxmox_hostname}/api2/json"
+    insecure_skip_tls_verify = var.proxmox_insecure_skip_tls_verify
+    username                 = var.proxmox_user
+    password                 = var.proxmox_password
+    node                     = var.proxmox_node_name
 
     communicator = "none" // Explicitly set the communicator to none
 

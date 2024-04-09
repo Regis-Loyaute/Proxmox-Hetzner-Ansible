@@ -6,7 +6,6 @@
       ansible.builtin.command:
         cmd: "packer init /home/rloyaute/pfsense-packer-proxmox/pfSense.pkr.hcl"
       ignore_errors: yes
-      # Consider handling errors more appropriately.
 
     - name: Build pfSense image with Packer
       ansible.builtin.command:
